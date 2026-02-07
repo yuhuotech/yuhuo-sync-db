@@ -1,0 +1,30 @@
+# Yuhuo Sync DB 配置文件示例
+
+# 源数据库配置（测试/预发布环境）
+source:
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: password
+  database: test_db
+  charset: utf8mb4
+
+# 目标数据库配置（线上环境）
+target:
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: password
+  database: prod_db
+  charset: utf8mb4
+
+# 需要同步数据的表列表（所有表默认比对结构）
+sync_data_tables:
+  - users
+  - orders
+  - products
+
+# 日志配置（可选）
+logging:
+  level: INFO
+  file: sync.log
