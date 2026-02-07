@@ -95,8 +95,8 @@ func (c *Comparator) compareTableStructures(sourceTables, targetTables []string)
 		}
 
 		if !targetTableMap[tableName] {
-			// 目标库中不存在这个表，视为新增表
-			diff.ColumnsAdded = getColumnNames(sourceDef.Columns)
+			// 目标库中不存在这个表，保存完整的列定义
+			diff.ColumnsAdded = sourceDef.Columns
 		} else {
 			targetDef, err := c.targetQueryHelper.GetTableDefinition(tableName)
 			if err != nil {
@@ -125,7 +125,7 @@ func (c *Comparator) compareTableStructures(sourceTables, targetTables []string)
 
 // compareColumns 比对列定义
 func (c *Comparator) compareColumns(sourceColumns, targetColumns []models.Column) (struct {
-	added   []string
+	added   []models.Column
 	deleted []string
 }, []models.ColumnModification) {
 	sourceColMap := make(map[string]models.Column)
@@ -138,13 +138,14 @@ func (c *Comparator) compareColumns(sourceColumns, targetColumns []models.Column
 		targetColMap[col.Name] = col
 	}
 
-	var added, deleted []string
+	var added []models.Column
+	var deleted []string
 	var modifications []models.ColumnModification
 
 	// 检查新增和修改的列
 	for _, sourceCol := range sourceColumns {
 		if _, exists := targetColMap[sourceCol.Name]; !exists {
-			added = append(added, sourceCol.Name)
+			added = append(added, sourceCol)
 		} else {
 			targetCol := targetColMap[sourceCol.Name]
 			if !columnsEqual(sourceCol, targetCol) {
@@ -165,15 +166,23 @@ func (c *Comparator) compareColumns(sourceColumns, targetColumns []models.Column
 	}
 
 	return struct {
-		added   []string
+		added   []models.Column
 		deleted []string
 	}{added, deleted}, modifications
 }
 
 // columnsEqual 判断两个列是否相等
+// 注意：忽略字符集和排序规则的差异，因为这通常不需要修改列定义
 func columnsEqual(col1, col2 models.Column) bool {
 	// 比对基本属性
-	if col1.Name != col2.Name || col1.Type != col2.Type {
+	if col1.Name != col2.Name {
+		return false
+	}
+
+	// 规范化类型进行比对（忽略长度括号）
+	type1 := normalizeType(col1.Type)
+	type2 := normalizeType(col2.Type)
+	if type1 != type2 {
 		return false
 	}
 
@@ -195,7 +204,24 @@ func columnsEqual(col1, col2 models.Column) bool {
 		return false
 	}
 
+	// 注意：NOT 比对 Charset 和 Collation，因为这些差异通常不需要修改列
+	// 如果用户需要修改字符集，应该单独使用 ALTER TABLE ... CONVERT TO CHARSET
+
 	return true
+}
+
+// normalizeType 规范化列类型，忽略长度和其他修饰符
+func normalizeType(typeStr string) string {
+	// 转换为大写进行比对
+	typeStr = strings.ToUpper(typeStr)
+
+	// 移除括号内的内容（如 VARCHAR(255) → VARCHAR, INT(11) → INT）
+	idx := strings.Index(typeStr, "(")
+	if idx > 0 {
+		return typeStr[:idx]
+	}
+
+	return typeStr
 }
 
 // compareIndexes 比对索引定义

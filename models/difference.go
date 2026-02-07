@@ -10,7 +10,7 @@ type ColumnModification struct {
 // StructureDifference 表示表结构的差异
 type StructureDifference struct {
 	TableName          string
-	ColumnsAdded       []string // 新增的列名
+	ColumnsAdded       []Column // 新增的列（完整定义）
 	ColumnsDeleted     []string // 删除的列名
 	ColumnsModified    []ColumnModification
 	IndexesAdded       []Index

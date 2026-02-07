@@ -63,10 +63,10 @@ func (sg *SQLGenerator) generateStructureSQL(structDiff models.StructureDifferen
 
 	tableName := structDiff.TableName
 
-	// 新增列
-	for _, colName := range structDiff.ColumnsAdded {
-		// 这里需要完整的列定义，目前简化处理，实际应该从源库获取完整定义
-		sql := fmt.Sprintf("ALTER TABLE `%s` ADD COLUMN `%s` VARCHAR(255);", tableName, colName)
+	// 新增列 - 使用完整的列定义
+	for _, col := range structDiff.ColumnsAdded {
+		colDef := sg.buildColumnDefinition(col)
+		sql := fmt.Sprintf("ALTER TABLE `%s` ADD COLUMN %s;", tableName, colDef)
 		sqls = append(sqls, sql)
 	}
 
@@ -76,10 +76,10 @@ func (sg *SQLGenerator) generateStructureSQL(structDiff models.StructureDifferen
 		sqls = append(sqls, sql)
 	}
 
-	// 修改列
+	// 修改列 - 使用新列的完整定义
 	for _, colMod := range structDiff.ColumnsModified {
-		// 简化处理，实际应该生成完整的 MODIFY COLUMN 语句
-		sql := fmt.Sprintf("ALTER TABLE `%s` MODIFY COLUMN `%s` VARCHAR(255);", tableName, colMod.ColumnName)
+		colDef := sg.buildColumnDefinition(colMod.NewColumn)
+		sql := fmt.Sprintf("ALTER TABLE `%s` MODIFY COLUMN %s;", tableName, colDef)
 		sqls = append(sqls, sql)
 	}
 
@@ -205,6 +205,49 @@ func (sg *SQLGenerator) generateDeleteSQL(tableName, pkColumn string, rows []map
 	}
 
 	return sqls
+}
+
+// buildColumnDefinition 构建完整的列定义 SQL
+func (sg *SQLGenerator) buildColumnDefinition(col models.Column) string {
+	var sb strings.Builder
+
+	// 列名和类型
+	sb.WriteString("`" + col.Name + "` " + col.Type)
+
+	// 如果类型包含长度（如 VARCHAR）但未在类型中包含，则添加
+	if col.Length > 0 && !strings.Contains(strings.ToUpper(col.Type), "(") {
+		// 仅当是 VARCHAR 等需要长度的类型时才添加
+		if strings.Contains(strings.ToUpper(col.Type), "VARCHAR") ||
+			strings.Contains(strings.ToUpper(col.Type), "CHAR") {
+			sb.WriteString(fmt.Sprintf("(%d)", col.Length))
+		}
+	}
+
+	// 默认值
+	if col.DefaultValue != nil {
+		sb.WriteString(" DEFAULT ")
+		sb.WriteString(sg.escapeValue(*col.DefaultValue))
+	}
+
+	// 非空约束
+	if !col.IsNullable {
+		sb.WriteString(" NOT NULL")
+	}
+
+	// 自增
+	if col.IsAutoIncrement {
+		sb.WriteString(" AUTO_INCREMENT")
+	}
+
+	// 字符集和排序规则（如果指定）
+	if col.Charset != nil {
+		sb.WriteString(" CHARACTER SET " + *col.Charset)
+	}
+	if col.Collation != nil {
+		sb.WriteString(" COLLATE " + *col.Collation)
+	}
+
+	return sb.String()
 }
 
 // escapeValue 转义 SQL 值
