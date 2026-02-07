@@ -63,6 +63,13 @@ func (sg *SQLGenerator) generateStructureSQL(structDiff models.StructureDifferen
 
 	tableName := structDiff.TableName
 
+	// 如果是新表，生成 CREATE TABLE 语句
+	if structDiff.IsNewTable && structDiff.TableDefinition != nil {
+		createSQL := sg.generateCreateTableSQL(tableName, structDiff.TableDefinition)
+		sqls = append(sqls, createSQL)
+		return sqls, nil // 新表已创建，不需要后续的 ALTER TABLE
+	}
+
 	// 新增列 - 使用完整的列定义
 	for _, col := range structDiff.ColumnsAdded {
 		colDef := sg.buildColumnDefinition(col)
@@ -246,6 +253,64 @@ func (sg *SQLGenerator) buildColumnDefinition(col models.Column) string {
 	if col.Collation != nil {
 		sb.WriteString(" COLLATE " + *col.Collation)
 	}
+
+	return sb.String()
+}
+
+// generateCreateTableSQL 生成 CREATE TABLE 语句
+func (sg *SQLGenerator) generateCreateTableSQL(tableName string, tableDef *models.TableDefinition) string {
+	var sb strings.Builder
+
+	sb.WriteString("CREATE TABLE `" + tableName + "` (\n")
+
+	// 添加所有列
+	for i, col := range tableDef.Columns {
+		colDef := sg.buildColumnDefinition(col)
+		sb.WriteString("  " + colDef)
+
+		if i < len(tableDef.Columns)-1 {
+			sb.WriteString(",\n")
+		} else {
+			// 检查是否有主键或索引需要添加
+			if tableDef.PrimaryKey != "" || len(tableDef.Indexes) > 0 {
+				sb.WriteString(",\n")
+			} else {
+				sb.WriteString("\n")
+			}
+		}
+	}
+
+	// 添加主键约束
+	if tableDef.PrimaryKey != "" {
+		sb.WriteString("  PRIMARY KEY (`" + tableDef.PrimaryKey + "`)")
+		if len(tableDef.Indexes) > 0 {
+			sb.WriteString(",\n")
+		} else {
+			sb.WriteString("\n")
+		}
+	}
+
+	// 添加其他索引
+	for i, idx := range tableDef.Indexes {
+		if idx.Type == "PRIMARY" {
+			continue // 已处理
+		}
+
+		switch idx.Type {
+		case "UNIQUE":
+			sb.WriteString("  UNIQUE KEY `" + idx.Name + "` (`" + strings.Join(idx.Columns, "`, `") + "`)")
+		default:
+			sb.WriteString("  KEY `" + idx.Name + "` (`" + strings.Join(idx.Columns, "`, `") + "`)")
+		}
+
+		if i < len(tableDef.Indexes)-1 {
+			sb.WriteString(",\n")
+		} else {
+			sb.WriteString("\n")
+		}
+	}
+
+	sb.WriteString(");")
 
 	return sb.String()
 }

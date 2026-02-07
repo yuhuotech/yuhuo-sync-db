@@ -10,8 +10,10 @@ type ColumnModification struct {
 // StructureDifference 表示表结构的差异
 type StructureDifference struct {
 	TableName          string
-	ColumnsAdded       []Column // 新增的列（完整定义）
-	ColumnsDeleted     []string // 删除的列名
+	IsNewTable         bool                 // 标记：表是否在源库存在但在目标库不存在
+	TableDefinition    *TableDefinition     // 完整的表定义（仅当新表时非空）
+	ColumnsAdded       []Column             // 新增的列（完整定义）
+	ColumnsDeleted     []string             // 删除的列名
 	ColumnsModified    []ColumnModification
 	IndexesAdded       []Index
 	IndexesDeleted     []Index

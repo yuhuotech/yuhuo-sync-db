@@ -95,8 +95,11 @@ func (c *Comparator) compareTableStructures(sourceTables, targetTables []string)
 		}
 
 		if !targetTableMap[tableName] {
-			// 目标库中不存在这个表，保存完整的列定义
+			// 目标库中不存在这个表，这是一个新表
+			diff.IsNewTable = true
+			diff.TableDefinition = sourceDef
 			diff.ColumnsAdded = sourceDef.Columns
+			diff.IndexesAdded = sourceDef.Indexes
 		} else {
 			targetDef, err := c.targetQueryHelper.GetTableDefinition(tableName)
 			if err != nil {
