@@ -1,0 +1,32 @@
+# Binaries
+sync-db
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Configuration files (contain sensitive info)
+config.yaml
+config.*.yaml
+*.env
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+sync.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
