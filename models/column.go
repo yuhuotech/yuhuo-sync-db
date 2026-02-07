@@ -11,6 +11,7 @@ type Column struct {
 	Charset          *string // MySQL specific
 	Collation        *string // MySQL specific
 	Extra            string  // auto_increment, on update CURRENT_TIMESTAMP, etc.
+	Comment          *string // Column comment
 }
 
 // String 返回列的字符串表示

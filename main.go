@@ -81,7 +81,7 @@ func main() {
 	fmt.Println("\n========== Step 2: Generating SQL Statements ==========\n")
 	appLogger.Info("Generating SQL statements")
 
-	sqlGen := sync.NewSQLGenerator()
+	sqlGen := sync.NewSQLGenerator(connManager.GetSourceDB())
 	sqls, err := sqlGen.GenerateSQL(diff)
 	if err != nil {
 		appLogger.Error(fmt.Sprintf("Failed to generate SQL: %v", err))

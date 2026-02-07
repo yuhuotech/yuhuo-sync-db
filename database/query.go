@@ -72,7 +72,7 @@ func (qh *QueryHelper) getColumns(tableName string) ([]models.Column, string, er
 		SELECT
 			COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE,
 			COLUMN_DEFAULT, EXTRA, COLUMN_KEY,
-			CHARACTER_SET_NAME, COLLATION_NAME
+			CHARACTER_SET_NAME, COLLATION_NAME, COLUMN_COMMENT
 		FROM INFORMATION_SCHEMA.COLUMNS
 		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
 		ORDER BY ORDINAL_POSITION
@@ -95,9 +95,10 @@ func (qh *QueryHelper) getColumns(tableName string) ([]models.Column, string, er
 			columnKey        string
 			characterSetName sql.NullString
 			collationName    sql.NullString
+			columnComment    sql.NullString
 		)
 
-		if err := rows.Scan(&name, &columnType, &isNullable, &defaultValue, &extra, &columnKey, &characterSetName, &collationName); err != nil {
+		if err := rows.Scan(&name, &columnType, &isNullable, &defaultValue, &extra, &columnKey, &characterSetName, &collationName, &columnComment); err != nil {
 			return nil, "", fmt.Errorf("failed to scan column: %w", err)
 		}
 
@@ -119,6 +120,10 @@ func (qh *QueryHelper) getColumns(tableName string) ([]models.Column, string, er
 
 		if collationName.Valid {
 			col.Collation = &collationName.String
+		}
+
+		if columnComment.Valid {
+			col.Comment = &columnComment.String
 		}
 
 		columns = append(columns, col)
@@ -309,4 +314,24 @@ func (qh *QueryHelper) GetAllRows(tableName string) ([]map[string]interface{}, e
 	}
 
 	return result, rows.Err()
+}
+
+// GetCreateTableSQL 获取表的原始 CREATE TABLE 语句
+func (qh *QueryHelper) GetCreateTableSQL(tableName string) (string, error) {
+	rows, err := qh.conn.Query("SHOW CREATE TABLE `" + tableName + "`")
+	if err != nil {
+		return "", fmt.Errorf("failed to query create table statement: %w", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return "", fmt.Errorf("no result from SHOW CREATE TABLE for table %s", tableName)
+	}
+
+	var table, createSQL string
+	if err := rows.Scan(&table, &createSQL); err != nil {
+		return "", fmt.Errorf("failed to scan create table statement: %w", err)
+	}
+
+	return createSQL, nil
 }

@@ -4,16 +4,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yuhuo/sync-db/database"
 	"github.com/yuhuo/sync-db/models"
 )
 
 // SQLGenerator 用于生成 SQL 语句
 type SQLGenerator struct {
+	sourceQueryHelper *database.QueryHelper
 }
 
 // NewSQLGenerator 创建 SQL 生成器
-func NewSQLGenerator() *SQLGenerator {
-	return &SQLGenerator{}
+func NewSQLGenerator(sourceConn *database.Connection) *SQLGenerator {
+	return &SQLGenerator{
+		sourceQueryHelper: database.NewQueryHelper(sourceConn),
+	}
 }
 
 // GenerateSQL 根据差异生成 SQL 语句
@@ -65,7 +69,10 @@ func (sg *SQLGenerator) generateStructureSQL(structDiff models.StructureDifferen
 
 	// 如果是新表，生成 CREATE TABLE 语句
 	if structDiff.IsNewTable && structDiff.TableDefinition != nil {
-		createSQL := sg.generateCreateTableSQL(tableName, structDiff.TableDefinition)
+		createSQL, err := sg.generateCreateTableSQL(tableName, structDiff.TableDefinition)
+		if err != nil {
+			return nil, err
+		}
 		sqls = append(sqls, createSQL)
 		return sqls, nil // 新表已创建，不需要后续的 ALTER TABLE
 	}
@@ -254,65 +261,22 @@ func (sg *SQLGenerator) buildColumnDefinition(col models.Column) string {
 		sb.WriteString(" COLLATE " + *col.Collation)
 	}
 
+	// 列注释
+	if col.Comment != nil {
+		sb.WriteString(" COMMENT " + sg.escapeValue(*col.Comment))
+	}
+
 	return sb.String()
 }
 
-// generateCreateTableSQL 生成 CREATE TABLE 语句
-func (sg *SQLGenerator) generateCreateTableSQL(tableName string, tableDef *models.TableDefinition) string {
-	var sb strings.Builder
-
-	sb.WriteString("CREATE TABLE `" + tableName + "` (\n")
-
-	// 添加所有列
-	for i, col := range tableDef.Columns {
-		colDef := sg.buildColumnDefinition(col)
-		sb.WriteString("  " + colDef)
-
-		if i < len(tableDef.Columns)-1 {
-			sb.WriteString(",\n")
-		} else {
-			// 检查是否有主键或索引需要添加
-			if tableDef.PrimaryKey != "" || len(tableDef.Indexes) > 0 {
-				sb.WriteString(",\n")
-			} else {
-				sb.WriteString("\n")
-			}
-		}
+// generateCreateTableSQL 生成 CREATE TABLE 语句，使用 SHOW CREATE TABLE 获取原始建表语句
+func (sg *SQLGenerator) generateCreateTableSQL(tableName string, tableDef *models.TableDefinition) (string, error) {
+	// 从源数据库获取原始的 CREATE TABLE 语句
+	createSQL, err := sg.sourceQueryHelper.GetCreateTableSQL(tableName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get create table statement for %s: %w", tableName, err)
 	}
-
-	// 添加主键约束
-	if tableDef.PrimaryKey != "" {
-		sb.WriteString("  PRIMARY KEY (`" + tableDef.PrimaryKey + "`)")
-		if len(tableDef.Indexes) > 0 {
-			sb.WriteString(",\n")
-		} else {
-			sb.WriteString("\n")
-		}
-	}
-
-	// 添加其他索引
-	for i, idx := range tableDef.Indexes {
-		if idx.Type == "PRIMARY" {
-			continue // 已处理
-		}
-
-		switch idx.Type {
-		case "UNIQUE":
-			sb.WriteString("  UNIQUE KEY `" + idx.Name + "` (`" + strings.Join(idx.Columns, "`, `") + "`)")
-		default:
-			sb.WriteString("  KEY `" + idx.Name + "` (`" + strings.Join(idx.Columns, "`, `") + "`)")
-		}
-
-		if i < len(tableDef.Indexes)-1 {
-			sb.WriteString(",\n")
-		} else {
-			sb.WriteString("\n")
-		}
-	}
-
-	sb.WriteString(");")
-
-	return sb.String()
+	return createSQL + ";", nil
 }
 
 // escapeValue 转义 SQL 值

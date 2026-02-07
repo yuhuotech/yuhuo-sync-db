@@ -207,6 +207,16 @@ func columnsEqual(col1, col2 models.Column) bool {
 		return false
 	}
 
+	// 比对列注释
+	if (col1.Comment == nil) != (col2.Comment == nil) {
+		return false
+	}
+	if col1.Comment != nil && col2.Comment != nil {
+		if *col1.Comment != *col2.Comment {
+			return false
+		}
+	}
+
 	// 注意：NOT 比对 Charset 和 Collation，因为这些差异通常不需要修改列
 	// 如果用户需要修改字符集，应该单独使用 ALTER TABLE ... CONVERT TO CHARSET
 
