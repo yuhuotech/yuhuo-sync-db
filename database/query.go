@@ -17,12 +17,12 @@ func NewQueryHelper(conn *Connection) *QueryHelper {
 	return &QueryHelper{conn: conn}
 }
 
-// GetTables 获取数据库中的所有表列表
+// GetTables 获取数据库中的所有表列表（不包括视图）
 func (qh *QueryHelper) GetTables() ([]string, error) {
 	rows, err := qh.conn.Query(`
 		SELECT TABLE_NAME
 		FROM INFORMATION_SCHEMA.TABLES
-		WHERE TABLE_SCHEMA = DATABASE()
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'
 		ORDER BY TABLE_NAME
 	`)
 	if err != nil {

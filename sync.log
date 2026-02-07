@@ -18,3 +18,11 @@
 [2026-02-07 22:42:51] [INFO] Comparison complete: 93 structure diffs, 0 data diffs, 3 view diffs
 [2026-02-07 22:43:19] [INFO] Generating SQL statements
 [2026-02-07 22:43:19] [INFO] Generated 131 SQL statements
+[2026-02-07 22:46:31] [INFO] Application started
+[2026-02-07 22:46:31] [INFO] Connecting to source database: 10.10.200.16:3306/tms
+[2026-02-07 22:46:31] [INFO] Connecting to target database: 10.10.200.6:3306/tms
+[2026-02-07 22:46:31] [INFO] Successfully connected to both databases
+[2026-02-07 22:46:31] [INFO] Starting difference comparison
+[2026-02-07 22:46:35] [INFO] Comparison complete: 93 structure diffs, 0 data diffs, 3 view diffs
+[2026-02-07 22:46:58] [INFO] Generating SQL statements
+[2026-02-07 22:46:58] [INFO] Generated 108 SQL statements
