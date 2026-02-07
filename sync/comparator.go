@@ -210,16 +210,24 @@ func columnsEqual(col1, col2 models.Column) bool {
 	return true
 }
 
-// normalizeType 规范化列类型，忽略长度和其他修饰符
+// normalizeType 规范化列类型，忽略长度参数但保留修饰符
 func normalizeType(typeStr string) string {
-	// 转换为大写进行比对
+	// 转换为大起进行比对
 	typeStr = strings.ToUpper(typeStr)
 
-	// 移除括号内的内容（如 VARCHAR(255) → VARCHAR, INT(11) → INT）
+	// 移除括号内的内容，但保留括号后面的修饰符
+	// 例如：VARCHAR(255) → VARCHAR，TINYINT(1) UNSIGNED → TINYINT UNSIGNED
 	idx := strings.Index(typeStr, "(")
-	if idx > 0 {
-		return typeStr[:idx]
+	endIdx := strings.Index(typeStr, ")")
+	if idx > 0 && endIdx > idx {
+		// 去掉括号及其内容，但保留后面的部分（如 UNSIGNED）
+		typeStr = typeStr[:idx] + typeStr[endIdx+1:]
 	}
+
+	// 清除多余的空格
+	typeStr = strings.TrimSpace(typeStr)
+	// 将多个空格替换为单个空格
+	typeStr = strings.Join(strings.Fields(typeStr), " ")
 
 	return typeStr
 }

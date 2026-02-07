@@ -9,7 +9,8 @@
       "Bash(go test:*)",
       "Bash(ls:*)",
       "Bash(./sync-db:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(go run:*)"
     ]
   }
 }
